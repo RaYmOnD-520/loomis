@@ -55,7 +55,9 @@ export class JobsService {
     const state = await bullJob.getState();
     const status = this.mapBullStateToJobStatus(state);
 
-    const updatedAt = new Date(bullJob.processedOn || bullJob.timestamp);
+    const updatedAt = new Date(
+      bullJob.finishedOn || bullJob.processedOn || bullJob.timestamp,
+    );
 
     return {
       ...metadata,
