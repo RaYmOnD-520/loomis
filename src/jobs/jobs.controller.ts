@@ -8,12 +8,12 @@ export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Post()
-  createJob(@Body() createJobDto: CreateJobDto): Job {
+  createJob(@Body() createJobDto: CreateJobDto): Promise<Job> {
     return this.jobsService.createJob(createJobDto);
   }
 
   @Get(':id')
-  getJob(@Param('id') id: string): Job {
+  getJob(@Param('id') id: string): Promise<Job> {
     return this.jobsService.getJobById(id);
   }
 }
