@@ -8,8 +8,11 @@ export class JobsProcessor extends WorkerHost {
 
   async process(job: Job): Promise<any> {
     const startTime = Date.now();
+    const attemptsMade = job.attemptsMade || 0;
+    const maxAttempts = job.opts?.attempts || 1;
+
     this.logger.log(
-      `[${new Date().toISOString()}] START processing job ${job.id} of type ${job.data.type}`,
+      `[${new Date().toISOString()}] START processing job ${job.id} of type ${job.data.type} - Attempt ${attemptsMade}/${maxAttempts}`,
     );
 
     const delay = this.getDelayForJobType(job.data.type);
