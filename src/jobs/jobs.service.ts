@@ -35,6 +35,11 @@ export class JobsService {
       },
       {
         jobId: jobId,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 1000,
+        },
       },
     );
 
@@ -53,7 +58,9 @@ export class JobsService {
     }
 
     const state = await bullJob.getState();
-    const status = this.mapBullStateToJobStatus(state);
+    const attemptsMade = bullJob.attemptsMade || 0;
+    const maxAttempts = bullJob.opts?.attempts || 1;
+    const status = this.mapBullStateToJobStatus(state, attemptsMade, maxAttempts);
 
     const updatedAt = new Date(
       bullJob.finishedOn || bullJob.processedOn || bullJob.timestamp,
@@ -63,10 +70,16 @@ export class JobsService {
       ...metadata,
       status,
       updatedAt,
+      attemptsMade,
+      maxAttempts,
     };
   }
 
-  private mapBullStateToJobStatus(state: string): JobStatus {
+  private mapBullStateToJobStatus(state: string, attemptsMade: number, maxAttempts: number): JobStatus {
+    if (state === 'failed' && attemptsMade < maxAttempts) {
+      return JobStatus.PROCESSING;
+    }
+
     const stateMap: Record<string, JobStatus> = {
       waiting: JobStatus.PENDING,
       delayed: JobStatus.PENDING,
