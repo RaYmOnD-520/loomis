@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
 import { Job, JobStatus } from './entities/job.entity';
 import { CreateJobDto } from './dto/create-job.dto';
+import { QueueStatsDto } from './dto/queue-stats.dto';
 
 @Injectable()
 export class JobsService {
@@ -72,6 +73,34 @@ export class JobsService {
       updatedAt,
       attemptsMade,
       maxAttempts,
+    };
+  }
+
+  async getQueueStats(): Promise<QueueStatsDto> {
+    const counts = await this.jobsQueue.getJobCounts(
+      'waiting',
+      'delayed',
+      'active',
+      'completed',
+      'failed',
+    );
+
+    // Map BullMQ states to our simplified status categories
+    // waiting + delayed = pending
+    // active = processing
+    // completed = completed
+    // failed = failed (only jobs that exhausted retries)
+    const pending = (counts.waiting || 0) + (counts.delayed || 0);
+    const processing = counts.active || 0;
+    const completed = counts.completed || 0;
+    const failed = counts.failed || 0;
+
+    return {
+      pending,
+      processing,
+      completed,
+      failed,
+      total: pending + processing + completed + failed,
     };
   }
 
