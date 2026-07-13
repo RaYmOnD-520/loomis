@@ -12,4 +12,6 @@ export interface Job {
   status: JobStatus;
   createdAt: Date;
   updatedAt: Date;
+  attemptsMade?: number;
+  maxAttempts?: number;
 }
