@@ -30,7 +30,7 @@ Perfect for demonstrating skills in distributed systems, queue architecture, and
 ## Features
 
 - ✅ **Job Submission API** - REST endpoint with payload validation using class-validator DTOs
-- ✅ **Redis-Backed Queue** - Persistent job storage with configurable concurrency (default: 3 workers)
+- ✅ **Redis-Backed Queue** - Persistent job storage with configurable concurrency (default: 1 worker, sequential processing)
 - ✅ **Automatic Retry with Exponential Backoff** - 3 attempts with delays of 1s/2s/4s
 - ✅ **Real-Time Queue Statistics** - Endpoint returning pending, processing, completed, and failed job counts
 - ✅ **Live Dashboard** - React frontend polling every 5 seconds, displaying:
@@ -250,8 +250,8 @@ BullMQ's internal job states are mapped to simplified application statuses:
 | `delayed`    | `pending`         | Job is scheduled for future execution    |
 | `active`     | `processing`      | Job is currently being executed          |
 | `completed`  | `completed`       | Job finished successfully                |
-| `failed`     | `processing`      | Job failed but has retries remaining     |
-| `failed`     | `failed`          | Job failed and exhausted all retries     |
+| `failed` (retries remaining) | `processing` | Job failed but will automatically retry |
+| `failed` (all retries exhausted) | `failed` | Job failed permanently after 3 attempts |
 
 ### Adding Custom Job Types
 
