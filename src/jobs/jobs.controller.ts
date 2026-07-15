@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import type { Job } from './entities/job.entity';
@@ -16,6 +16,14 @@ export class JobsController {
   @Get('stats/summary')
   getQueueStats(): Promise<QueueStatsDto> {
     return this.jobsService.getQueueStats();
+  }
+
+  @Get()
+  getRecentJobs(
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ): Promise<Job[]> {
+    const clampedLimit = Math.min(Math.max(limit, 1), 100);
+    return this.jobsService.getRecentJobs(clampedLimit);
   }
 
   @Get(':id')
