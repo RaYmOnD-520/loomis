@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Queue, JobType } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
 import { Job, JobStatus } from './entities/job.entity';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -102,6 +102,42 @@ export class JobsService {
       failed,
       total: pending + processing + completed + failed,
     };
+  }
+
+  async getRecentJobs(limit: number): Promise<Job[]> {
+    const allJobs: Job[] = [];
+
+    const states: JobType[] = ['waiting', 'delayed', 'active', 'completed', 'failed'];
+
+    for (const state of states) {
+      const bullJobs = await this.jobsQueue.getJobs([state], 0, limit - 1);
+
+      for (const bullJob of bullJobs) {
+        const metadata = this.jobMetadata.get(bullJob.id!);
+        if (!metadata) continue;
+
+        const jobState = await bullJob.getState();
+        const attemptsMade = bullJob.attemptsMade || 0;
+        const maxAttempts = bullJob.opts?.attempts || 1;
+        const status = this.mapBullStateToJobStatus(jobState, attemptsMade, maxAttempts);
+
+        const updatedAt = new Date(
+          bullJob.finishedOn || bullJob.processedOn || bullJob.timestamp,
+        );
+
+        allJobs.push({
+          ...metadata,
+          status,
+          updatedAt,
+          attemptsMade,
+          maxAttempts,
+        });
+      }
+    }
+
+    allJobs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    return allJobs.slice(0, limit);
   }
 
   private mapBullStateToJobStatus(state: string, attemptsMade: number, maxAttempts: number): JobStatus {
