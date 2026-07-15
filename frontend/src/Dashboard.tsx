@@ -1,41 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getQueueStats } from './api';
+import { getQueueStats, getRecentJobs } from './api';
 import type { QueueStats, Job } from './types';
 import { formatRelativeTime } from './utils';
-
-// Placeholder jobs data since backend doesn't have GET /jobs endpoint yet
-const PLACEHOLDER_JOBS: Job[] = [
-  {
-    id: 'a7f3c8d2-4b1e-4f9a-8c6d-2e5b9f1a3c7e',
-    type: 'send-email',
-    payload: { to: 'user@example.com' },
-    status: 'completed',
-    createdAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
-    attemptsMade: 1,
-    maxAttempts: 3,
-  },
-  {
-    id: 'b2e9f5c1-3a7d-4e2b-9f8c-1d6a4e7b2c9f',
-    type: 'process-webhook',
-    payload: { event: 'user.created' },
-    status: 'processing',
-    createdAt: new Date(Date.now() - 15 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 10 * 1000).toISOString(),
-    attemptsMade: 1,
-    maxAttempts: 3,
-  },
-  {
-    id: 'c9d4e2a1-5b8f-4c3e-8a7d-6f1b3e9c4a2d',
-    type: 'generate-report',
-    payload: { reportId: 'RPT-2024-001' },
-    status: 'failed',
-    createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-    attemptsMade: 3,
-    maxAttempts: 3,
-  },
-];
 
 interface StatCardProps {
   label: string;
@@ -104,30 +70,35 @@ function JobRow({ job }: JobRowProps) {
 
 export function Dashboard() {
   const [stats, setStats] = useState<QueueStats | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0);
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchData() {
       try {
-        const data = await getQueueStats();
-        setStats(data);
+        const [statsData, jobsData] = await Promise.all([
+          getQueueStats(),
+          getRecentJobs(10),
+        ]);
+        setStats(statsData);
+        setJobs(jobsData);
         setLastUpdated(new Date());
         setSecondsSinceUpdate(0);
         setError(null);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : 'Failed to fetch queue stats'
+          err instanceof Error ? err.message : 'Failed to fetch data'
         );
       }
     }
 
     // Initial fetch
-    fetchStats();
+    fetchData();
 
     // Poll every 5 seconds
-    const interval = setInterval(fetchStats, 5000);
+    const interval = setInterval(fetchData, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -216,10 +187,6 @@ export function Dashboard() {
         <div className="bg-[#2d2d2b] border border-[rgba(255,255,255,0.08)] rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.08)]">
             <h2 className="text-lg font-semibold text-[#e8e6e3]">Recent Jobs</h2>
-            <p className="text-sm text-[#9a9892] mt-1">
-              Note: Backend does not have a GET /jobs list endpoint yet.
-              Displaying placeholder data.
-            </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -243,9 +210,17 @@ export function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {PLACEHOLDER_JOBS.map((job) => (
-                  <JobRow key={job.id} job={job} />
-                ))}
+                {jobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#9a9892]">
+                      No jobs yet
+                    </td>
+                  </tr>
+                ) : (
+                  jobs.map((job) => (
+                    <JobRow key={job.id} job={job} />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
