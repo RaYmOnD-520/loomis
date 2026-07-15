@@ -24,7 +24,7 @@ Loomis is a distributed task queue system demonstrating production-grade async j
 - Lightweight for this scale
 
 ### Concurrency Settings
-- Default: 3 concurrent workers (`concurrency: 3` in `app.module.ts`)
+- Concurrency is not explicitly configured, so BullMQ defaults to processing 1 job at a time (sequential, not parallel)
 - Retry policy: 3 attempts, exponential backoff starting at 1000ms
 
 ## Known Limitations
@@ -190,7 +190,7 @@ Frontend hardcodes `http://localhost:3000` in `api.ts` — update `API_BASE` if 
 |------|---------|
 | `src/jobs/jobs.service.ts` | In-memory metadata Map, business logic |
 | `src/jobs/jobs.processor.ts` | Worker that actually executes jobs |
-| `src/app.module.ts` | BullMQ config (Redis connection, concurrency) |
+| `src/app.module.ts` | BullMQ config (Redis connection; concurrency could be configured here but currently isn't) |
 | `src/main.ts` | CORS config, port binding |
 | `frontend/src/Dashboard.tsx` | Main UI component, polling logic |
 | `frontend/src/api.ts` | Backend API client functions |
