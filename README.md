@@ -1,98 +1,298 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Loomis
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-style distributed task queue system built with TypeScript, NestJS, and React.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Overview
 
-## Description
+Loomis is a robust asynchronous job processing system that demonstrates modern backend and frontend patterns for handling distributed task queues. The system provides:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Async Job Processing**: Submit jobs via REST API and track their lifecycle from pending → processing → completed/failed
+- **Automatic Retries**: Built-in retry mechanism with exponential backoff for transient failures
+- **Real-time Monitoring**: Live dashboard showing queue health, job statistics, and recent job history
+- **Production-Ready Patterns**: Redis-backed persistence, configurable concurrency, structured logging
 
-## Project setup
+Perfect for demonstrating skills in distributed systems, queue architecture, and full-stack TypeScript development.
+
+## Tech Stack
+
+**Backend:**
+- [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+- [NestJS](https://nestjs.com/) - Progressive Node.js framework
+- [Redis](https://redis.io/) - In-memory data store for queue persistence
+- [BullMQ](https://docs.bullmq.io/) - Modern Redis-based queue library
+
+**Frontend:**
+- [React 18](https://react.dev/) - UI library
+- [Vite](https://vite.dev/) - Next-generation frontend tooling
+- [Tailwind CSS v4](https://tailwindcss.com/) - Utility-first CSS framework
+- [TypeScript](https://www.typescriptlang.org/) - Full type safety across the stack
+
+## Features
+
+- ✅ **Job Submission API** - REST endpoint with payload validation using class-validator DTOs
+- ✅ **Redis-Backed Queue** - Persistent job storage with configurable concurrency (default: 3 workers)
+- ✅ **Automatic Retry with Exponential Backoff** - 3 attempts with delays of 1s/2s/4s
+- ✅ **Real-Time Queue Statistics** - Endpoint returning pending, processing, completed, and failed job counts
+- ✅ **Live Dashboard** - React frontend polling every 5 seconds, displaying:
+  - Queue health metrics (color-coded stat cards)
+  - Recent jobs table with truncated UUIDs
+  - Responsive layout for mobile/tablet/desktop
+  - Connection status indicators and error handling
+- ✅ **Job Lifecycle Tracking** - Full visibility into job status, attempts made, and timestamps
+
+## Architecture
+
+Loomis uses a **hybrid storage approach** for demonstration purposes:
+
+- **BullMQ (Redis)**: Source of truth for job queue state, handles job distribution, retries, and persistence
+- **In-Memory Metadata Map**: Stores job creation timestamps and custom metadata in a `Map<string, Job>`
+
+**Known Limitation**: The in-memory metadata map is lost on server restart. In a production system, this metadata would be persisted to a database like PostgreSQL or MongoDB alongside the job ID as a foreign key, allowing BullMQ to remain the queue authority while persistent storage handles audit trails and historical data.
+
+### Why This Approach?
+
+This architecture demonstrates:
+- **Separation of Concerns**: Queue mechanics (BullMQ) vs. business metadata (application layer)
+- **Pragmatic Trade-offs**: Acceptable for demos/MVPs; clear path to production hardening
+- **Real-World Patterns**: Many production systems use Redis for hot data + SQL for cold/audit data
+
+## API Endpoints
+
+| Method | Path                   | Description                                                                 |
+|--------|------------------------|-----------------------------------------------------------------------------|
+| POST   | `/jobs`                | Create a new job. Body: `{ type: string, payload: object }`               |
+| GET    | `/jobs/:id`            | Get job details by UUID (status, attempts, timestamps)                     |
+| GET    | `/jobs`                | List recent jobs, most recent first. Query param: `?limit=N` (default 20, max 100) |
+| GET    | `/jobs/stats/summary`  | Get queue statistics (pending, processing, completed, failed counts)       |
+
+### Example: Create a Job
 
 ```bash
-$ npm install
+curl -X POST http://localhost:3000/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "send-email",
+    "payload": {
+      "to": "user@example.com",
+      "subject": "Welcome!",
+      "body": "Thanks for signing up."
+    }
+  }'
 ```
 
-## Compile and run the project
+**Response:**
+```json
+{
+  "id": "a7f3c8d2-4b1e-4f9a-8c6d-2e5b9f1a3c7e",
+  "type": "send-email",
+  "payload": { "to": "user@example.com", "subject": "Welcome!", "body": "Thanks for signing up." },
+  "status": "pending",
+  "createdAt": "2026-07-15T10:30:00.000Z",
+  "updatedAt": "2026-07-15T10:30:00.000Z"
+}
+```
+
+### Example: Get Job Status
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+curl http://localhost:3000/jobs/a7f3c8d2-4b1e-4f9a-8c6d-2e5b9f1a3c7e
 ```
 
-## Run tests
+**Response:**
+```json
+{
+  "id": "a7f3c8d2-4b1e-4f9a-8c6d-2e5b9f1a3c7e",
+  "type": "send-email",
+  "payload": { "to": "user@example.com", "subject": "Welcome!", "body": "Thanks for signing up." },
+  "status": "completed",
+  "createdAt": "2026-07-15T10:30:00.000Z",
+  "updatedAt": "2026-07-15T10:30:15.000Z",
+  "attemptsMade": 1,
+  "maxAttempts": 3
+}
+```
+
+### Example: Get Queue Stats
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+curl http://localhost:3000/jobs/stats/summary
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+**Response:**
+```json
+{
+  "pending": 5,
+  "processing": 2,
+  "completed": 147,
+  "failed": 3,
+  "total": 157
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Setup
 
-## Resources
+### Prerequisites
 
-Check out a few resources that may come in handy when working with NestJS:
+- **Node.js** 18+ ([download](https://nodejs.org/))
+- **Redis** 6+ installed via Homebrew (macOS):
+  ```bash
+  brew install redis
+  brew services start redis
+  ```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+  Or via Docker:
+  ```bash
+  docker run -d -p 6379:6379 redis:7-alpine
+  ```
 
-## Support
+### Backend Setup
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-## Stay in touch
+2. **Configure environment variables:**
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+   Create a `.env` file in the project root:
+   ```env
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+   PORT=3000
+   ```
+
+3. **Start the backend server:**
+   ```bash
+   npm run start:dev
+   ```
+
+   The API will be available at `http://localhost:3000`.
+
+### Frontend Setup
+
+1. **Navigate to the frontend directory:**
+   ```bash
+   cd frontend
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+   The dashboard will be available at `http://localhost:5173`.
+
+### Verify the Setup
+
+1. Backend health check:
+   ```bash
+   curl http://localhost:3000/jobs/stats/summary
+   ```
+
+2. Open the dashboard in your browser:
+   ```
+   http://localhost:5173
+   ```
+
+3. Submit a test job:
+   ```bash
+   curl -X POST http://localhost:3000/jobs \
+     -H "Content-Type: application/json" \
+     -d '{"type": "test-job", "payload": {"message": "Hello, Loomis!"}}'
+   ```
+
+   You should see the job appear in the dashboard within 5 seconds.
+
+## Project Structure
+
+```
+loomis/
+├── src/                      # Backend source code
+│   ├── jobs/                 # Jobs module (controllers, services, DTOs)
+│   │   ├── jobs.controller.ts
+│   │   ├── jobs.service.ts
+│   │   ├── jobs.processor.ts
+│   │   ├── dto/              # Data transfer objects
+│   │   └── entities/         # Type definitions
+│   ├── app.module.ts
+│   └── main.ts
+├── frontend/                 # React dashboard
+│   ├── src/
+│   │   ├── Dashboard.tsx     # Main dashboard component
+│   │   ├── api.ts            # API client functions
+│   │   ├── types.ts          # TypeScript types
+│   │   └── utils.ts          # Helper functions
+│   ├── public/
+│   └── index.html
+├── .env                      # Environment variables (not committed)
+├── package.json
+└── README.md
+```
+
+## Screenshots
+
+_Coming soon: Dashboard screenshots showing queue statistics and job table_
+
+## Development Notes
+
+### Job Status Mapping
+
+BullMQ's internal job states are mapped to simplified application statuses:
+
+| BullMQ State | Application Status | Description                              |
+|--------------|-------------------|------------------------------------------|
+| `waiting`    | `pending`         | Job is queued, waiting for a worker      |
+| `delayed`    | `pending`         | Job is scheduled for future execution    |
+| `active`     | `processing`      | Job is currently being executed          |
+| `completed`  | `completed`       | Job finished successfully                |
+| `failed`     | `processing`      | Job failed but has retries remaining     |
+| `failed`     | `failed`          | Job failed and exhausted all retries     |
+
+### Adding Custom Job Types
+
+Jobs are processed by `jobs.processor.ts`. To add custom job handling:
+
+```typescript
+@Processor('jobs')
+export class JobsProcessor {
+  @Process()
+  async processJob(job: BullMQJob<any>) {
+    const { type, payload } = job.data;
+
+    switch (type) {
+      case 'send-email':
+        return this.handleEmailJob(payload);
+      case 'generate-report':
+        return this.handleReportJob(payload);
+      // Add your custom job types here
+      default:
+        console.log(`Processing job: ${type}`, payload);
+    }
+  }
+}
+```
+
+## Future Enhancements
+
+- [ ] Add PostgreSQL for persistent metadata storage
+- [ ] Implement job cancellation endpoint
+- [ ] Add job filtering/search in dashboard
+- [ ] Support scheduled/delayed jobs via API
+- [ ] Add WebSocket support for real-time dashboard updates (eliminate polling)
+- [ ] Implement authentication and rate limiting
+- [ ] Add job priority levels
+- [ ] Support bulk job submission
+- [ ] Add Prometheus metrics and Grafana dashboards
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT License - feel free to use this project as a reference or starting point for your own queue systems.
+
+---
+
+**Built with ❤️ as a demonstration of production-grade TypeScript architecture**
